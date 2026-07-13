@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>电子签字</title>
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#525659;height:100vh;display:flex;flex-direction:column;overflow:hidden}
@@ -39,6 +40,7 @@ header h1{font-size:16px;font-weight:500}
 #loading{position:fixed;inset:0;background:rgba(0,0,0,.55);color:#fff;display:none;justify-content:center;align-items:center;z-index:200;font-size:16px;text-align:center;padding:20px}
 </style>
 </head>
+
 <body>
 
 <header>
@@ -73,26 +75,16 @@ header h1{font-size:16px;font-weight:500}
 
 <div id="loading">解析中…</div>
 
+<!-- Word / Excel / 截图 -->
 <script src="./mammoth.js"></script>
 <script src="./xlsx.js"></script>
-<script src="./pdf.js"></script>
 <script src="./html2canvas.min.js"></script>
 
-<!-- ✅ 微信专用：禁用 Worker -->
+<!-- ✅ PDF.js 微信专用（版本锁死 + Legacy 构建） -->
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
 <script>
-if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-  pdfjsLib.disableWorker = true;
-  if (!pdfjsLib.WorkerMessageHandler) {
-    pdfjsLib.WorkerMessageHandler = {
-      setup: function () {},
-      initialize: function () {},
-      createEmptyWorker: function () {
-        return { postMessage: function () {}, terminate: function () {} };
-      }
-    };
-  }
-}
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js';
 </script>
 
 <script>
@@ -112,7 +104,6 @@ slider.addEventListener('transitionend',()=>slider.style.transition='');
 
 fi.onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
-  if(!window.mammoth||!window.XLSX||!window.pdfjsLib||!window.html2canvas) return alert('JS依赖文件缺失，请检查仓库根目录');
   ld.style.display='flex';ld.textContent='解析中…';
   slider.innerHTML='';pages=[];cur=0;activeSig=null;
   const ext=f.name.split('.').pop().toLowerCase();
@@ -142,8 +133,7 @@ async function loadDocx(f){
 
 async function loadXlsx(f){
   ld.textContent='正在解析Excel…';
-  const ab=await f.arrayBuffer();
-  const wb=XLSX.read(ab,{type:'array'});
+  const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
   for(let i=0;i<wb.SheetNames.length;i++){
     ld.textContent=`正在渲染Excel第${i+1}/${wb.SheetNames.length}页…`;
     const html=XLSX.utils.sheet_to_html(wb.Sheets[wb.SheetNames[i]]);
@@ -156,13 +146,12 @@ async function loadXlsx(f){
   }
 }
 
-// ✅ 修正后的 PDF 加载函数
+// ✅ 微信稳定版 PDF 渲染（无 Worker Hack）
 async function loadPdf(f) {
   ld.textContent = '正在解析PDF…';
   const ab = await f.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({
     data: new Uint8Array(ab),
-    disableWorker: true, // 关键
     useSystemFonts: true
   }).promise;
 
@@ -190,7 +179,7 @@ async function loadPdf(f) {
 
 async function loadImg(f){
   ld.textContent='正在加载图片…';
-  const url=await new Promise(r=>{const fr=new FileReader();fr.onload=ev=>r(ev.target.result);fr.readAsDataURL(f);});
+  const url=await new Promise(r=>{const fr=new FileReader();fr.onload=r=>r(fr.result);fr.readAsDataURL(f);});
   const img=document.createElement('img');img.src=url;
   await new Promise(r=>{img.onload=r;});
   const div=document.createElement('div');div.className='page-inner';div.appendChild(img);
@@ -222,8 +211,7 @@ function okPad(){
   const s=document.createElement('div');s.className='sig';
   s.innerHTML=`<span class="txt"><img src="${c.toDataURL()}" style="height:60px"></span><div class="rz"></div>`;
   s.style.left='60px';s.style.top='80px';
-  rec.ov.appendChild(s);rec.sigs.push(s);
-  bindSig(s,rec);pick(s);
+  rec.ov.appendChild(s);rec.sigs.push(s);bindSig(s,rec);pick(s);
 }
 
 function bindSig(s,rec){
@@ -240,7 +228,7 @@ function bindSig(s,rec){
   rz.addEventListener('touchmove',e=>{const t=e.touches[0];rm(t.clientX);e.preventDefault();},{passive:false});
 }
 function pick(s){if(activeSig)activeSig.classList.remove('active');activeSig=s;activeSig.classList.add('active');}
-function delSig(){if(activeSig){activeSig.remove();activeSig=null;}}
+function delSig(){if(active)activeSig.remove();activeSig=null;}
 slider.addEventListener('click',e=>{if(e.target.closest('.sig'))return;if(activeSig){activeSig.classList.remove('active');activeSig=null;}});
 
 function save(){
@@ -256,7 +244,7 @@ function save(){
       const a=document.createElement('a');a.download='已签字_'+Date.now()+'.png';a.href=c.toDataURL('image/png');a.click();
       ld.style.display='none';
     })
-    .catch(err=>{pages.forEach((p,i)=>p.el.style.display=orig[i]);slider.style.flexDirection='';slider.style.transform='translateX('+(-cur*100)+'vw)';ld.style.display='none';alert('保存失败');});
+    .catch(()=>{pages.forEach((p,i)=>p.el.style.display=orig[i]);slider.style.flexDirection='';slider.style.transform='translateX('+(-cur*100)+'vw)';ld.style.display='none';alert('保存失败');});
 }
 </script>
 </body>
