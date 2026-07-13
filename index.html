@@ -7,19 +7,15 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#525659;height:100vh;display:flex;flex-direction:column;overflow:hidden}
-/* 顶部栏 */
 header{background:#1677ff;color:#fff;padding:10px 15px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
 header h1{font-size:16px;font-weight:500}
 .btn{background:#fff;color:#1677ff;border:none;border-radius:4px;padding:6px 12px;font-size:14px}
-/* 底部工具栏（仅保留需要的按钮） */
 .bottom-bar{padding:10px;background:#fff;border-top:1px solid #ddd;display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0}
 .bottom-bar select{padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:14px}
 .bottom-bar button{padding:6px 12px;border:none;border-radius:4px;background:#f0f0f0;font-size:14px;cursor:pointer}
 .bottom-bar .primary{background:#1677ff;color:#fff}
 .bottom-bar .danger{background:#ff4d4f;color:#fff}
-/* 翻页指示器 */
 .page-ind{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-size:13px;padding:3px 14px;border-radius:12px;z-index:50;pointer-events:none}
-/* 横向滑动容器 */
 #slider{display:flex;height:calc(100vh - 110px);overflow:hidden;touch-action:pan-y}
 .page{flex-shrink:0;width:100vw;height:100%;display:flex;justify-content:center;align-items:flex-start;padding:16px;overflow:auto;position:relative}
 .page-inner{position:relative;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.35);max-height:100%}
@@ -27,12 +23,10 @@ header h1{font-size:16px;font-weight:500}
 .docx-html{padding:24px;font-size:14px;line-height:1.8}
 .docx-html table{border-collapse:collapse;width:100%}
 .docx-html td,.docx-html th{border:1px solid #ccc;padding:6px 10px}
-/* 签名样式 */
 .sig{position:absolute;z-index:20;padding:2px;user-select:none}
 .sig.active{outline:2px dashed #1677ff}
 .sig .txt img{max-height:60px;display:block}
 .sig .rz{position:absolute;right:-8px;bottom:-8px;width:16px;height:16px;background:#1677ff;border-radius:50%;cursor:nwse-resize}
-/* 手写弹窗 */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;justify-content:center;align-items:center;z-index:100}
 .modal.show{display:flex}
 .modal-box{background:#fff;border-radius:8px;padding:20px;width:90%;max-width:340px}
@@ -42,7 +36,6 @@ header h1{font-size:16px;font-weight:500}
 .m-act button{flex:1;padding:8px;border:none;border-radius:4px;cursor:pointer}
 .m-act .ok{background:#1677ff;color:#fff}
 .m-act .no{background:#eee}
-/* 加载层 */
 #loading{position:fixed;inset:0;background:rgba(0,0,0,.55);color:#fff;display:none;justify-content:center;align-items:center;z-index:200;font-size:16px;text-align:center;padding:20px}
 </style>
 </head>
@@ -55,11 +48,8 @@ header h1{font-size:16px;font-weight:500}
 </header>
 
 <div class="page-ind" id="pgInd">第 1 页 / 共 1 页</div>
-
-<!-- 横向滑动容器 -->
 <div id="slider"></div>
 
-<!-- 底部工具栏（已删除文字签字/张三/30相关） -->
 <div class="bottom-bar">
   <select id="sFC">
     <option value="#000">黑色</option>
@@ -71,7 +61,6 @@ header h1{font-size:16px;font-weight:500}
   <button class="primary" onclick="save()">💾 保存</button>
 </div>
 
-<!-- 手写弹窗 -->
 <div class="modal" id="modal"><div class="modal-box">
   <h3>手写签名</h3>
   <canvas id="pad" width="300" height="150"></canvas>
@@ -84,53 +73,46 @@ header h1{font-size:16px;font-weight:500}
 
 <div id="loading">解析中…</div>
 
-<!-- 本地依赖（必须和以下文件名完全一致） -->
 <script src="./mammoth.js"></script>
 <script src="./xlsx.js"></script>
 <script src="./pdf.js"></script>
 <script src="./html2canvas.min.js"></script>
 
+<!-- ✅ 微信专用：禁用 Worker -->
 <script>
-// ============== 内联PDF Worker（避免微信拦截） ==============
-if(window.pdfjsLib){
-  const b64='dmFyIHBkZkpzV29ya2VyO1NlbGYub25tZXNzYWdlPWZ1bmN0aW9uKGUpe3ZhciB0PWVkYXRhLmFjdGlvbjtwZGZKc1dvcmtlcj10LnBkZkpzV29ya2VyfHtwZGZKc1dvcmtlcn07dC5zdWJhY3Rpb24/cGRmSnNXb3JrZXJbdC5zdWJhY3Rpb25dLmFwcGx5KHBkZkpzV29ya2VyLHRhcmdzKTpwdGlmSnNXb3JrZXJbdF0uYXBwbHkod29ya2VyLHRhcmdzKX07ZnVuY3Rpb24gcG9zdE1lc3NhZ2UodHlwZSxkYXRhKXtzZWxmLnBvc3RNZXNzYWdlKHt0eXBlOnR5cGUsZGF0YTpkYXRhfSwwKX1mdW5jdGlvbiBwb3N0RXJyb3IobSl7cG9zdE1lc3NhZ2UoImVycm9yIix7ZXJyb3I6e21lc3NhZ2U6bX19KX12YXIgd29ya2VyPXt2ZXJzaW9uOiIzLjExLjE3NCIsZ2V0RGVmaW5lZDpmdW5jdGlvbihrKXtyZXR1cm4gdGhpcy50W2tdfSx0Ont9LGV4cG9ydEdsb2JhbERlZmluZTpmdW5jdGlvbihrLHYpe3dvcmtlcltrXT12fX07';
-  pdfjsLib.GlobalWorkerOptions.workerSrc='data:application/javascript;base64,'+b64;
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+  pdfjsLib.disableWorker = true;
+  if (!pdfjsLib.WorkerMessageHandler) {
+    pdfjsLib.WorkerMessageHandler = {
+      setup: function () {},
+      initialize: function () {},
+      createEmptyWorker: function () {
+        return { postMessage: function () {}, terminate: function () {} };
+      }
+    };
+  }
 }
+</script>
 
-// ============== 全局状态 ==============
+<script>
 const fi=document.getElementById('fi'), slider=document.getElementById('slider'), pgInd=document.getElementById('pgInd'), ld=document.getElementById('loading');
-let pages=[];   // 每页数据：{el: 页面DOM, ov: 签名overlay, sigs: 签名数组}
-let cur=0;      // 当前页索引
-let activeSig=null;
-let startX=0, sliding=false;
+let pages=[], cur=0, activeSig=null, startX=0, sliding=false;
 
-// ============== 滑动翻页逻辑 ==============
 slider.addEventListener('touchstart',e=>{sliding=true;startX=e.touches[0].clientX;},{passive:true});
 slider.addEventListener('touchend',e=>{
   if(!sliding)return; sliding=false;
   const dx=e.changedTouches[0].clientX-startX;
-  if(dx>50&&cur>0) go(cur-1);       // 右滑上一页
-  else if(dx<-50&&cur<pages.length-1) go(cur+1);  // 左滑下一页
+  if(dx>50&&cur>0) go(cur-1);
+  else if(dx<-50&&cur<pages.length-1) go(cur+1);
   slider.style.transform='translateX('+(-cur*100)+'vw)';
 });
-function go(i){
-  cur=i;
-  slider.style.transition='transform .25s';
-  slider.style.transform='translateX('+(-i*100)+'vw)';
-  pgInd.textContent=`第 ${i+1} 页 / 共 ${pages.length} 页`;
-  if(activeSig){activeSig.classList.remove('active');activeSig=null;}
-}
+function go(i){cur=i;slider.style.transition='transform .25s';slider.style.transform='translateX('+(-i*100)+'vw)';pgInd.textContent=`第 ${i+1} 页 / 共 ${pages.length} 页`;if(activeSig){activeSig.classList.remove('active');activeSig=null;}}
 slider.addEventListener('transitionend',()=>slider.style.transition='');
 
-// ============== 文件上传与解析（增强错误提示） ==============
 fi.onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
-  // 先检查依赖是否加载
-  if(!window.mammoth) return alert('mammoth.js文件缺失，请检查仓库根目录是否有该文件');
-  if(!window.XLSX) return alert('xlsx.js文件缺失，请检查仓库根目录是否有该文件');
-  if(!window.pdfjsLib) return alert('pdf.js文件缺失，请检查仓库根目录是否有该文件');
-  if(!window.html2canvas) return alert('html2canvas.min.js文件缺失，请检查仓库根目录是否有该文件');
-
+  if(!window.mammoth||!window.XLSX||!window.pdfjsLib||!window.html2canvas) return alert('JS依赖文件缺失，请检查仓库根目录');
   ld.style.display='flex';ld.textContent='解析中…';
   slider.innerHTML='';pages=[];cur=0;activeSig=null;
   const ext=f.name.split('.').pop().toLowerCase();
@@ -139,16 +121,15 @@ fi.onchange=async e=>{
     else if(ext==='xlsx') await loadXlsx(f);
     else if(ext==='pdf') await loadPdf(f);
     else if(['png','jpg','jpeg','bmp','gif'].includes(ext)) await loadImg(f);
-    else throw new Error('不支持的文件格式，请上传Word/Excel/PDF/图片');
+    else throw new Error('不支持的格式');
     pgInd.textContent=`第 1 页 / 共 ${pages.length} 页`;
     slider.style.transform='translateX(0)';
     ld.style.display='none';
-  }catch(err){ld.style.display='none';alert('解析失败：'+err.message);console.error(err);}
+  }catch(err){ld.style.display='none';alert('解析失败：'+err.message);}
 };
 
-// --- Word解析 ---
 async function loadDocx(f){
-  ld.textContent='正在解析Word文档…';
+  ld.textContent='正在解析Word…';
   const ab=await f.arrayBuffer();
   const res=await mammoth.convertToHtml({arrayBuffer:ab});
   const div=document.createElement('div');div.className='page-inner';
@@ -159,7 +140,6 @@ async function loadDocx(f){
   const p=makePage(div,ov);slider.appendChild(p);pages.push({el:p,ov:ov,sigs:[]});
 }
 
-// --- Excel解析（每个Sheet一页） ---
 async function loadXlsx(f){
   ld.textContent='正在解析Excel…';
   const ab=await f.arrayBuffer();
@@ -168,8 +148,7 @@ async function loadXlsx(f){
     ld.textContent=`正在渲染Excel第${i+1}/${wb.SheetNames.length}页…`;
     const html=XLSX.utils.sheet_to_html(wb.Sheets[wb.SheetNames[i]]);
     const div=document.createElement('div');div.className='page-inner';
-    const wrap=document.createElement('div');wrap.className='docx-html';
-    wrap.innerHTML=`<h3>${wb.SheetNames[i]}</h3>${html}`;
+    const wrap=document.createElement('div');wrap.className='docx-html';wrap.innerHTML=`<h3>${wb.SheetNames[i]}</h3>${html}`;
     div.appendChild(wrap);
     const ov=document.createElement('div');ov.className='sig-overlay';ov.style.cssText='position:absolute;inset:0;pointer-events:none';
     div.appendChild(ov);
@@ -177,27 +156,38 @@ async function loadXlsx(f){
   }
 }
 
-// --- PDF解析（每页一页） ---
-async function loadPdf(f){
-  ld.textContent='正在解析PDF…';
-  const ab=await f.arrayBuffer();
-  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(ab)}).promise;
-  const maxW=window.innerWidth-32;
-  for(let i=1;i<=pdf.numPages;i++){
-    ld.textContent=`正在渲染PDF第${i}/${pdf.numPages}页…`;
-    const page=await pdf.getPage(i);
-    const vp=page.getViewport({scale:maxW/page.getViewport({scale:1}).width});
-    const cv=document.createElement('canvas');
-    cv.width=vp.width;cv.height=vp.height;
-    await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
-    const div=document.createElement('div');div.className='page-inner';div.appendChild(cv);
-    const ov=document.createElement('div');ov.className='sig-overlay';ov.style.cssText='position:absolute;inset:0;pointer-events:none';
+// ✅ 修正后的 PDF 加载函数
+async function loadPdf(f) {
+  ld.textContent = '正在解析PDF…';
+  const ab = await f.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({
+    data: new Uint8Array(ab),
+    disableWorker: true, // 关键
+    useSystemFonts: true
+  }).promise;
+
+  const maxW = window.innerWidth - 32;
+  for (let i = 1; i <= pdf.numPages; i++) {
+    ld.textContent = `正在渲染PDF第${i}/${pdf.numPages}页…`;
+    const page = await pdf.getPage(i);
+    const vp = page.getViewport({ scale: maxW / page.getViewport({ scale: 1 }).width });
+    const cv = document.createElement('canvas');
+    cv.width = vp.width;
+    cv.height = vp.height;
+    await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    const div = document.createElement('div');
+    div.className = 'page-inner';
+    div.appendChild(cv);
+    const ov = document.createElement('div');
+    ov.className = 'sig-overlay';
+    ov.style.cssText = 'position:absolute;inset:0;pointer-events:none';
     div.appendChild(ov);
-    const p=makePage(div,ov);slider.appendChild(p);pages.push({el:p,ov:ov,sigs:[]});
+    const p = makePage(div, ov);
+    slider.appendChild(p);
+    pages.push({ el: p, ov: ov, sigs: [] });
   }
 }
 
-// --- 图片解析 ---
 async function loadImg(f){
   ld.textContent='正在加载图片…';
   const url=await new Promise(r=>{const fr=new FileReader();fr.onload=ev=>r(ev.target.result);fr.readAsDataURL(f);});
@@ -209,31 +199,21 @@ async function loadImg(f){
   const p=makePage(div,ov);slider.appendChild(p);pages.push({el:p,ov:ov,sigs:[]});
 }
 
-// 包装成可滑动的页
 function makePage(inner,ov){const p=document.createElement('div');p.className='page';p.appendChild(inner);return p;}
 
-// ============== 手写签字逻辑 ==============
 const modal=document.getElementById('modal'), pad=document.getElementById('pad'), pc=pad.getContext('2d');
-let dw=false,px,py;
-// 触摸绘图
-pad.ontouchstart=e=>{dw=true;const r=pad.getBoundingClientRect();px=e.touches[0].clientX-r.left;py=e.touches[0].clientY-r.top;e.preventDefault();};
+let dw=false;
+pad.ontouchstart=e=>{dw=true;const r=pad.getBoundingClientRect();pc.moveTo(e.touches[0].clientX-r.left,e.touches[0].clientY-r.top);e.preventDefault();};
 pad.ontouchmove=e=>{if(!dw)return;const r=pad.getBoundingClientRect();pc.lineTo(e.touches[0].clientX-r.left,e.touches[0].clientY-r.top);pc.stroke();e.preventDefault();};
 pad.ontouchend=()=>dw=false;
-// 鼠标绘图（调试用）
-pad.onmousedown=e=>{dw=true;px=e.offsetX;py=e.offsetY;};
-pad.onmousemove=e=>{if(!dw)return;pc.lineTo(e.offsetX,e.offsetY);pc.stroke();px=e.offsetX;py=e.offsetY;};
-pad.onmouseup=()=>dw=false;
-// 初始化画笔
 pc.lineWidth=2.5;pc.lineCap='round';pc.lineJoin='round';pc.strokeStyle='#000';
-
-function openPad(){modal.classList.add('show');clrPad();}
+function openPad(){modal.classList.add('show');pc.clearRect(0,0,pad.width,pad.height);}
 function clrPad(){pc.clearRect(0,0,pad.width,pad.height);}
 function okPad(){
-  // 裁剪空白
   const d=pc.getImageData(0,0,pad.width,pad.height).data,w=pad.width,h=pad.height;
   let[t,b,l,r]=[h,0,w,0];
   for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>10){t=Math.min(t,y);b=Math.max(b,y);l=Math.min(l,x);r=Math.max(r,x);}
-  if(t>b){alert('请先手写签名');return;}
+  if(t>b){alert('请先手写');return;}
   const c=document.createElement('canvas');c.width=r-l+4;c.height=b-t+4;
   c.getContext('2d').putImageData(pc.getImageData(l-2,t-2,c.width,c.height),0,0);
   modal.classList.remove('show');
@@ -246,16 +226,13 @@ function okPad(){
   bindSig(s,rec);pick(s);
 }
 
-// ============== 签名拖拽+缩放逻辑 ==============
 function bindSig(s,rec){
   const rz=s.querySelector('.rz');
-  // 拖拽
   let sx,sy,sl,st;
   const ds=(x,y)=>{sx=x;sy=y;sl=s.offsetLeft;st=s.offsetTop;pick(s);};
   const dm=(x,y)=>{const p=rec.ov;const nl=Math.max(0,Math.min(p.offsetWidth-s.offsetWidth,sl+x-sx));const nt=Math.max(0,Math.min(p.offsetHeight-s.offsetHeight,st+y-sy));s.style.left=nl+'px';s.style.top=nt+'px';};
   s.addEventListener('touchstart',e=>{if(e.target===rz)return;const t=e.touches[0];ds(t.clientX,t.clientY);e.preventDefault();},{passive:false});
   s.addEventListener('touchmove',e=>{if(!s.classList.contains('active')||e.target===rz)return;const t=e.touches[0];dm(t.clientX,t.clientY);e.preventDefault();},{passive:false});
-  // 缩放
   let rx,rw,rh;
   const rs=(x)=>{rx=x;rw=s.offsetWidth;rh=s.querySelector('.txt img').offsetHeight;pick(s);};
   const rm=(x)=>{const nw=Math.max(40,rw+x-rx);s.style.width=nw+'px';s.querySelector('.txt img').style.height=(rh*nw/rw)+'px';};
@@ -264,13 +241,11 @@ function bindSig(s,rec){
 }
 function pick(s){if(activeSig)activeSig.classList.remove('active');activeSig=s;activeSig.classList.add('active');}
 function delSig(){if(activeSig){activeSig.remove();activeSig=null;}}
-// 点空白处取消选中
 slider.addEventListener('click',e=>{if(e.target.closest('.sig'))return;if(activeSig){activeSig.classList.remove('active');activeSig=null;}});
 
-// ============== 保存逻辑 ==============
 function save(){
   if(!pages.length)return alert('请先上传文件');
-  ld.style.display='flex';ld.textContent='正在生成图片…';
+  ld.style.display='flex';ld.textContent='生成中…';
   const orig=pages.map(p=>p.el.style.display);
   pages.forEach(p=>p.el.style.display='flex');
   slider.style.transform='none';slider.style.flexDirection='column';
@@ -281,7 +256,7 @@ function save(){
       const a=document.createElement('a');a.download='已签字_'+Date.now()+'.png';a.href=c.toDataURL('image/png');a.click();
       ld.style.display='none';
     })
-    .catch(err=>{pages.forEach((p,i)=>p.el.style.display=orig[i]);slider.style.flexDirection='';slider.style.transform='translateX('+(-cur*100)+'vw)';ld.style.display='none';alert('保存失败，请重试');console.error(err);});
+    .catch(err=>{pages.forEach((p,i)=>p.el.style.display=orig[i]);slider.style.flexDirection='';slider.style.transform='translateX('+(-cur*100)+'vw)';ld.style.display='none';alert('保存失败');});
 }
 </script>
 </body>
