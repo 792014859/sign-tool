@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>电子签字</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#525659;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* 顶部栏 */
+header{background:#1677ff;color:#fff;padding:10px 15px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+header h1{font-size:16px;font-weight:500}
+.btn{background:#fff;color:#1677ff;border:none;border-radius:4px;padding:6px 12px;font-size:14px}
+
+/* 签字工具栏（固定在底部，拇指好点） */
+.bottom-bar{padding:10px;background:#fff;border-top:1px solid #ddd;display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex-shrink:0}
+.bottom-bar input,.bottom-bar select{padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:14px}
+.bottom-bar button{padding:6px 12px;border:none;border-radius:4px;background:#f0f0f0;font-size:14px;cursor:pointer}
+.bottom-bar .primary{background:#1677ff;color:#fff}
+.bottom-bar .danger{background:#ff4d4f;color:#fff}
+
+/* 翻页指示器 */
+.page-ind{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;font-size:13px;padding:3px 14px;border-radius:12px;z-index:50;pointer-events:none}
+
+/* 文档区：横向滑动容器 */
+#slider{display:flex;height:calc(100vh - 110px);overflow:hidden;touch-action:pan-y}
+.page{flex-shrink:0;width:100vw;height:100%;display:flex;justify-content:center;align-items:flex-start;padding:16px;overflow:auto;position:relative}
+.page-inner{position:relative;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.35);max-height:100%}
+.page-inner canvas,.page-inner img,.page-inner .docx-html{display:block;max-width:100%}
+.docx-html{padding:24px;font-size:14px;line-height:1.8}
+.docx-html table{border-collapse:collapse;width:100%}
+.docx-html td,.docx-html th{border:1px solid #ccc;padding:6px 10px}
+
+/* 签名 */
+.sig{position:absolute;z-index:20;padding:2px;user-select:none}
+.sig.active{outline:2px dashed #1677ff}
+.sig .txt{font-family:"KaiTi","STKaiti",serif;color:#000;white-space:nowrap;pointer-events:none;text-shadow:0 0 1px #fff}
+.sig .rz{position:absolute;right:-8px;bottom:-8px;width:16px;height:16px;background:#1677ff;border-radius:50%;cursor:nwse-resize}
+
+/* 手写弹窗 */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;justify-content:center;align-items:center;z-index:100}
+.modal.show{display:flex}
+.modal-box{background:#fff;border-radius:8px;padding:20px;width:90%;max-width:340px}
+.modal-box h3{margin-bottom:12px}
+#pad{border:1px solid #ccc;border-radius:4px;background:#fff;touch-action:none;width:100%}
+.m-act{margin-top:12px;display:flex;gap:10px}
+.m-act button{flex:1;padding:8px;border:none;border-radius:4px;cursor:pointer}
+.m-act .ok{background:#1677ff;color:#fff}
+.m-act .no{background:#eee}
+
+#loading{position:fixed;inset:0;background:rgba(0,0,0,.55);color:#fff;display:none;justify-content:center;align-items:center;z-index:200;font-size:16px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📝 电子签字</h1>
+  <button class="btn" onclick="fi.click()">上传文件</button>
+  <input type="file" id="fi" accept=".docx,.xlsx,.pdf,image/*" hidden>
+</header>
+
+<div class="page-ind" id="pgInd">第 1 页 / 共 1 页</div>
+
+<!-- 横向滑动容器 -->
+<div id="slider"></div>
+
+<!-- 签字工具栏 -->
+<div class="bottom-bar">
+  <input id="sName" value="张三" style="width:70px" placeholder="签名">
+  <select id="sFS"><option value="22">22</option><option value="30" selected>30</option><option value="42">42</option><option value="56">56</option></select>
+  <select id="sFC"><option value="#000">黑</option><option value="#c00" selected>红</option><option value="#03a">蓝</option></select>
+  <button onclick="addTxt()">文字签字</button>
+  <button onclick="openPad()">✍️ 手写</button>
+  <button class="danger" onclick="delSig()">删除</button>
+  <button class="primary" onclick="save()">💾 保存</button>
+</div>
+
+<!-- 手写弹窗 -->
+<div class="modal" id="modal"><div class="modal-box">
+  <h3>手写签名</h3>
+  <canvas id="pad" width="300" height="150"></canvas>
+  <div class="m-act">
+    <button class="no" onclick="clrPad()">清除</button>
+    <button class="no" onclick="modal.classList.remove('show')">取消</button>
+    <button class="ok" onclick="okPad()">确认</button>
+  </div>
+</div></div>
+
+<div id="loading">解析中…</div>
+
+<!-- 本地依赖 -->
+<script src="./mammoth.js"></script>
+<script src="./xlsx.js"></script>
+<script
